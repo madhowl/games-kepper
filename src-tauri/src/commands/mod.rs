@@ -261,7 +261,7 @@ pub async fn create_game(state: State<'_, AppState>, dto: CreateGameDto) -> Resu
     
     let result = sqlx::query(
         r#"INSERT INTO games (parent_id, series_id, node_type, sort_order, title, original_title, description, year_published, min_players, max_players, min_age, play_time_min, play_time_max, difficulty, cover_image, bgg_id, barcode, language, status, condition, created_at, updated_at)
-        VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ru', ?, datetime('now'), datetime('now')) 
+        VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, 'ru', ?, NULL, datetime('now'), datetime('now')) 
         RETURNING id, parent_id, series_id, node_type, sort_order, title, original_title, description, year_published, min_players, max_players, min_age, play_time_min, play_time_max, difficulty, cover_image, bgg_id, barcode, language, status, condition, created_at, updated_at"#
     )
     .bind(&dto.parent_id)

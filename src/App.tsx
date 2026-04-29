@@ -1,4 +1,4 @@
-import { createSignal, createEffect, For, Show, onMount } from 'solid-js';
+import { createSignal, For, Show, onMount } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 
 interface GameNode {
@@ -11,56 +11,19 @@ interface GameNode {
   children: GameNode[];
 }
 
-interface Genre {
-  id: number;
-  name: string;
-}
-
-interface Author {
-  id: number;
-  name: string;
-}
-
-interface Publisher {
-  id: number;
-  name: string;
-}
-
-interface Series {
-  id: number;
-  name: string;
-}
-
 const [gamesTree, setGamesTree] = createSignal<GameNode[]>([]);
 const [selectedGame, setSelectedGame] = createSignal<GameNode | null>(null);
 const [expandedNodes, setExpandedNodes] = createSignal<Set<number>>(new Set());
 const [searchQuery, setSearchQuery] = createSignal('');
 const [searchResults, setSearchResults] = createSignal<GameNode[]>([]);
-const [showSearch, setShowSearch] = createSignal(false);
-
-const [genres, setGenres] = createSignal<Genre[]>([]);
-const [authors, setAuthors] = createSignal<Author[]>([]);
-const [publishers, setPublishers] = createSignal<Publisher[]>([]);
-const [seriesList, setSeriesList] = createSignal<Series[]>([]);
-
 const [showAddModal, setShowAddModal] = createSignal(false);
-const [showEditModal, setShowEditModal] = createSignal(false);
 const [newGameTitle, setNewGameTitle] = createSignal('');
 const [newGameType, setNewGameType] = createSignal('game');
-const [newParentId, setNewParentId] = createSignal<number | null>(null);
 
 async function loadData() {
   try {
     const tree = await invoke<GameNode[]>('get_games_tree');
     setGamesTree(tree);
-    const g = await invoke<Genre[]>('get_genres');
-    setGenres(g);
-    const a = await invoke<Author[]>('get_authors');
-    setAuthors(a);
-    const p = await invoke<Publisher[]>('get_publishers');
-    setPublishers(p);
-    const s = await invoke<Series[]>('get_series');
-    setSeriesList(s);
   } catch (e) {
     console.error('Failed to load data:', e);
   }
@@ -73,7 +36,7 @@ async function handleCreateGame() {
       dto: {
         title: newGameTitle(),
         node_type: newGameType(),
-        parent_id: newParentId(),
+        parent_id: null,
         series_id: null,
         original_title: null,
         description: null,
@@ -92,7 +55,6 @@ async function handleCreateGame() {
     });
     setNewGameTitle('');
     setNewGameType('game');
-    setNewParentId(null);
     setShowAddModal(false);
     await loadData();
   } catch (e) {
@@ -148,10 +110,49 @@ onMount(() => {
   loadData();
 });
 
+function GameItem(props: { game: GameNode; level: number }) {
+  const isExpanded = () => expandedNodes().has(props.game.id);
+  const isSelected = () => selectedGame()?.id === props.game.id;
+  
+  return (
+    <>
+      <div
+        onClick={() => {
+          if (props.game.has_children) toggleNode(props.game.id);
+          setSelectedGame(props.game);
+        }}
+        style={{
+          padding: '8px 12px',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          background: isSelected() ? '#4f46e5' : 'transparent',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          marginLeft: `${props.level * 20}px`
+        }}
+      >
+        <Show when={props.game.has_children}>
+          <span style={{ transform: isExpanded() ? 'rotate(90deg)' : 'rotate(0)', transition: '0.2s' }}>▶</span>
+        </Show>
+        <Show when={!props.game.has_children}>
+          <span style={{ width: '16px' }} />
+        </Show>
+        {getNodeIcon(props.game.node_type)} {props.game.title}
+      </div>
+      <Show when={props.game.has_children && isExpanded()}>
+        <For each={props.game.children}>
+          {(child) => <GameItem game={child} level={props.level + 1} />}
+        </For>
+      </Show>
+    </>
+  );
+}
+
 export default function App() {
   return (
     <div style={{ display: 'flex', height: '100vh', background: '#1a1a2e', color: '#eaeaea' }}>
-      <aside style={{ width: '320px', borderRight: '1px solid #333', display: 'flex', flexDirection: 'column' }}>
+      <aside style={{ width: '320px', borderRight: '1px solid #333', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
         <div style={{ padding: '16px', borderBottom: '1px solid #333' }}>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
             <input
@@ -201,7 +202,7 @@ export default function App() {
           </button>
         </div>
         
-        <div style={{ flex: 1, overflow: 'auto', padding: '8px' }}>
+        <div style={{ flex: 1, overflow: 'auto', padding: '8px', minHeight: 0 }}>
           <Show when={searchQuery() && searchResults().length > 0}>
             <div style={{ marginBottom: '16px' }}>
               <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px', padding: '0 8px' }}>
@@ -226,93 +227,13 @@ export default function App() {
             </div>
           </Show>
           
-          <For each={gamesTree()}>
-            {(game) => (
-              <div>
-                <div
-                  onClick={() => {
-                    if (game.has_children) toggleNode(game.id);
-                    setSelectedGame(game);
-                  }}
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    background: selectedGame()?.id === game.id ? '#4f46e5' : 'transparent',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  <Show when={game.has_children}>
-                    <span style={{ transform: expandedNodes().has(game.id) ? 'rotate(90deg)' : 'rotate(0)', transition: '0.2s' }}>
-                      ▶
-                    </span>
-                  </Show>
-                  <Show when={!game.has_children}>
-                    <span style={{ width: '16px' }} />
-                  </Show>
-                  {getNodeIcon(game.node_type)} {game.title}
-                </div>
-                <Show when={game.has_children && expandedNodes().has(game.id)}>
-                  <div style={{ paddingLeft: '24px' }}>
-                    <For each={game.children}>
-                      {(child) => (
-                        <div>
-                          <div
-                            onClick={() => {
-                              if (child.has_children) toggleNode(child.id);
-                              setSelectedGame(child);
-                            }}
-                            style={{
-                              padding: '8px 12px',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              background: selectedGame()?.id === child.id ? '#4f46e5' : 'transparent',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px'
-                            }}
-                          >
-                            <Show when={child.has_children}>
-                              <span style={{ transform: expandedNodes().has(child.id) ? 'rotate(90deg)' : 'rotate(0)', transition: '0.2s' }}>
-                                ▶
-                              </span>
-                            </Show>
-                            <Show when={!child.has_children}>
-                              <span style={{ width: '16px' }} />
-                            </Show>
-                            {getNodeIcon(child.node_type)} {child.title}
-                          </div>
-                          <Show when={child.has_children && expandedNodes().has(child.id)}>
-                            <div style={{ paddingLeft: '24px' }}>
-                              <For each={child.children}>
-                                {(grandchild) => (
-                                  <div
-                                    onClick={() => setSelectedGame(grandchild)}
-                                    style={{
-                                      padding: '8px 12px',
-                                      borderRadius: '6px',
-                                      cursor: 'pointer',
-                                      background: selectedGame()?.id === grandchild.id ? '#4f46e5' : 'transparent'
-                                    }}
-                                  >
-                                    {getNodeIcon(grandchild.node_type)} {grandchild.title}
-                                  </div>
-                                )}
-                              </For>
-                            </div>
-                          </Show>
-                        </div>
-                      )}
-                    </For>
-                  </div>
-                </Show>
-              </div>
-            )}
-          </For>
+          <Show when={!searchQuery() || searchResults().length === 0}>
+            <For each={gamesTree()}>
+              {(game) => <GameItem game={game} level={0} />}
+            </For>
+          </Show>
           
-          <Show when={gamesTree().length === 0}>
+          <Show when={gamesTree().length === 0 && !searchQuery()}>
             <div style={{ padding: '32px', textAlign: 'center', color: '#666' }}>
               Нет игр в коллекции.<br />Добавьте первую игру!
             </div>
@@ -320,7 +241,7 @@ export default function App() {
         </div>
       </aside>
       
-      <main style={{ flex: 1, padding: '24px', overflow: 'auto' }}>
+      <main style={{ flex: 1, padding: '24px', overflow: 'auto', position: 'relative', zIndex: 1 }}>
         <Show when={selectedGame()}>
           <div style={{ background: '#16213e', borderRadius: '12px', padding: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
@@ -328,19 +249,6 @@ export default function App() {
                 {getNodeIcon(selectedGame()!.node_type)} {selectedGame()!.title}
               </h1>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  onClick={() => setShowEditModal(true)}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    background: '#4f46e5',
-                    color: 'white',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Редактировать
-                </button>
                 <button
                   onClick={() => handleDeleteGame(selectedGame()!.id)}
                   style={{
@@ -384,7 +292,8 @@ export default function App() {
           background: 'rgba(0,0,0,0.7)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          zIndex: 100
         }}
         onClick={() => setShowAddModal(false)}
         >
