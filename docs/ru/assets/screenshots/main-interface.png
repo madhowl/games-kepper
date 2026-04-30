@@ -1,0 +1,6 @@
+This is a placeholder for a screenshot of the main interface.
+In a real implementation, this would be an actual PNG image showing:
+- The game tree on the left
+- Search bar at the top
+- Main content area showing game details
+- Bottom status bar
