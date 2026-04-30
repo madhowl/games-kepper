@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Games Keeper
+Comment=Каталогизатор настольных игр
+Exec=games-keeper
+Icon=games-keeper
+Terminal=false
+Type=Application
+Categories=Game;Utility;
+Keywords=board;games;catalog;
+StartupWMClass=games-keeper

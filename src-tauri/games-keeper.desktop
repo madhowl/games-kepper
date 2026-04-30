@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Games Keeper
+Comment=Каталогизатор настольных игр
+Exec=/usr/bin/games-keeper
+Icon=/usr/share/icons/hicolor/128x128/apps/games-keeper.png
+Terminal=false
+Type=Application
+Categories=Game;Utility;
+Keywords=board;games;catalog;
+StartupWMClass=games-keeper

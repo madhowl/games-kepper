@@ -138,7 +138,14 @@ pub fn run() {
         .manage(AppState::default())
         .setup(|app| {
             let app_handle = app.handle().clone();
-            
+
+            #[cfg(target_os = "linux")]
+            {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.set_title("Games Keeper");
+                }
+            }
+
             tauri::async_runtime::spawn(async move {
                 match init_db().await {
                     Ok(pool) => {
