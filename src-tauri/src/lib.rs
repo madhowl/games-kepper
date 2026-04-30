@@ -104,20 +104,35 @@ CREATE TABLE IF NOT EXISTS game_publishers (
     Ok(())
 }
 
-async fn init_db() -> Result<SqlitePool, sqlx::Error> {
-    let db_path = std::env::current_exe()
+fn get_data_dir() -> PathBuf {
+    // Для AppImage используем XDG_DATA_HOME или ~/.local/share
+    if let Ok(xdg) = std::env::var("APPIMAGE") {
+        if xdg.is_empty() == false {
+            // Мы внутри AppImage - используем домашнюю директорию
+            if let Some(home) = dirs::home_dir() {
+                return home.join(".local/share/games-keeper");
+            }
+        }
+    }
+    
+    // Стандартный путь - рядом с исполняемым файлом
+    std::env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(|p| p.to_path_buf()))
         .unwrap_or_else(|| PathBuf::from("."))
         .join("data")
-        .join("collection.db");
+}
+
+async fn init_db() -> Result<SqlitePool, sqlx::Error> {
+    let data_dir = get_data_dir();
+    let db_path = data_dir.join("collection.db");
     
-    let db_dir = db_path.parent().unwrap();
+    let db_dir = data_dir.clone();
     let db_url = format!("sqlite:{}?mode=rwc", db_path.display());
     
     info!("[DB] Opening database at: {}", db_path.display());
     
-    std::fs::create_dir_all(db_dir).expect("Failed to create data directory");
+    std::fs::create_dir_all(&db_dir).expect("Failed to create data directory");
     
     let pool = SqlitePoolOptions::new()
         .max_connections(1)
