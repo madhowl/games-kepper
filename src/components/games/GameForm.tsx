@@ -1,8 +1,10 @@
-import { createSignal, Show } from 'solid-js';
+import { createSignal, onMount, Show } from 'solid-js';
+import { invoke } from '@tauri-apps/api/core';
 import { Input } from '../../components/ui/input';
 import { Select } from '../../components/ui/select';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
+import { TagsSelect, type TagOption } from '../../components/ui/tags-select';
 
 interface CreateGameDto {
   title: string;
@@ -67,6 +69,23 @@ export function GameForm(props: GameFormProps) {
   const [title, setTitle] = createSignal('');
   const [nodeType, setNodeType] = createSignal('game');
   const [status, setStatus] = createSignal('owned');
+  const [genres, setGenres] = createSignal<TagOption[]>([]);
+  const [selectedGenreIds, setSelectedGenreIds] = createSignal<number[]>([]);
+
+  onMount(async () => {
+    try {
+      const loadedGenres = await invoke<{ id: number; name: string }[]>('get_genres');
+      setGenres(loadedGenres.map(g => ({ id: g.id, name: g.name })));
+    } catch (e) {
+      console.error('Failed to load genres:', e);
+    }
+  });
+
+  const handleCreateGenre = async (name: string) => {
+    const result = await invoke<{ id: number; name: string }>('create_genre', { dto: { name } });
+    setGenres([...genres(), { id: result.id, name: result.name }]);
+    return { id: result.id, name: result.name };
+  };
   
   const handleSubmit = () => {
     if (!title().trim()) return;
@@ -76,11 +95,13 @@ export function GameForm(props: GameFormProps) {
       title: title(),
       node_type: nodeType(),
       status: status(),
+      genre_ids: selectedGenreIds(),
     });
     
     setTitle('');
     setNodeType('game');
     setStatus('owned');
+    setSelectedGenreIds([]);
     props.onOpenChange(false);
   };
   
@@ -112,14 +133,22 @@ export function GameForm(props: GameFormProps) {
           />
         </div>
         
-        <div>
-          <label class="text-sm text-muted-foreground mb-1 block">Ст��тус</label>
+<div>
+          <label class="text-sm text-muted-foreground mb-1 block">Статус</label>
           <Select
             value={status()}
             onChange={(e) => setStatus(e.currentTarget.value)}
             options={statusOptions}
           />
         </div>
+
+        <TagsSelect
+          label="Жанры"
+          selectedIds={selectedGenreIds()}
+          availableTags={genres()}
+          onChange={setSelectedGenreIds}
+          onCreateTag={handleCreateGenre}
+        />
       </div>
       
       <DialogFooter>

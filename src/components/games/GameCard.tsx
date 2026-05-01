@@ -1,4 +1,5 @@
 import { Show } from 'solid-js';
+import { A } from '@solidjs/router';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../ui/button';
@@ -55,6 +56,11 @@ export function GameCard(props: GameCardProps) {
       
       <CardFooter>
         <div class="flex justify-end w-full gap-2">
+          <A href={`/game/${props.game.id}/edit`}>
+            <Button variant="secondary" size="sm">
+              ✏️ Редактировать
+            </Button>
+          </A>
           <Show when={props.onDelete}>
             <Button 
               variant="destructive" 

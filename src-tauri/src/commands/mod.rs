@@ -118,12 +118,18 @@ fn build_tree(games: Vec<GameRow>, parent_id: Option<i64>) -> Vec<GameNode> {
 }
 
 #[tauri::command]
-pub async fn get_games_tree(state: State<'_, AppState>) -> Result<Vec<GameNode>, String> {
+pub async fn get_games_tree(state: State<'_, AppState>, genre_id: Option<i64>) -> Result<Vec<GameNode>, String> {
     let pool = get_db(&state).await?;
     
-    let rows = sqlx::query(
-        "SELECT id, parent_id, series_id, node_type, sort_order, title, original_title, description, year_published, min_players, max_players, min_age, play_time_min, play_time_max, difficulty, cover_image, bgg_id, barcode, language, status, condition, created_at, updated_at FROM games ORDER BY sort_order, title"
-    ).fetch_all(&pool).await.map_err(|e| e.to_string())?;
+    let rows = if let Some(gid) = genre_id {
+        sqlx::query(
+            "SELECT DISTINCT g.id, g.parent_id, g.series_id, g.node_type, g.sort_order, g.title, g.original_title, g.description, g.year_published, g.min_players, g.max_players, g.min_age, g.play_time_min, g.play_time_max, g.difficulty, g.cover_image, g.bgg_id, g.barcode, g.language, g.status, g.condition, g.created_at, g.updated_at FROM games g LEFT JOIN game_genres gg ON g.id = gg.game_id WHERE gg.genre_id = ? OR gg.genre_id IS NULL ORDER BY g.sort_order, g.title"
+        ).bind(gid).fetch_all(&pool).await.map_err(|e| e.to_string())?
+    } else {
+        sqlx::query(
+            "SELECT id, parent_id, series_id, node_type, sort_order, title, original_title, description, year_published, min_players, max_players, min_age, play_time_min, play_time_max, difficulty, cover_image, bgg_id, barcode, language, status, condition, created_at, updated_at FROM games ORDER BY sort_order, title"
+        ).fetch_all(&pool).await.map_err(|e| e.to_string())?
+    };
     
     let games: Vec<GameRow> = rows.iter().map(|r| GameRow::from_row(r)).collect();
     Ok(build_tree(games, None))
@@ -159,6 +165,31 @@ pub async fn create_genre(state: State<'_, AppState>, dto: CreateGenreDto) -> Re
 }
 
 #[tauri::command]
+pub async fn update_genre(state: State<'_, AppState>, id: i64, dto: UpdateGenreDto) -> Result<GenreRow, String> {
+    let pool = get_db(&state).await?;
+    
+    sqlx::query("UPDATE genres SET name = ? WHERE id = ?")
+        .bind(&dto.name).bind(id).execute(&pool).await.map_err(|e| e.to_string())?;
+    
+    let result = sqlx::query("SELECT id, name, created_at FROM genres WHERE id = ?")
+        .bind(id).fetch_one(&pool).await.map_err(|e| e.to_string())?;
+    
+    Ok(GenreRow {
+        id: result.get("id"),
+        name: result.get("name"),
+        created_at: result.get("created_at"),
+    })
+}
+
+#[tauri::command]
+pub async fn delete_genre(state: State<'_, AppState>, id: i64) -> Result<(), String> {
+    let pool = get_db(&state).await?;
+    
+    sqlx::query("DELETE FROM genres WHERE id = ?").bind(id).execute(&pool).await.map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn get_authors(state: State<'_, AppState>) -> Result<Vec<AuthorRow>, String> {
     let pool = get_db(&state).await?;
     
@@ -187,6 +218,32 @@ pub async fn create_author(state: State<'_, AppState>, dto: CreateAuthorDto) -> 
         bio: result.get("bio"),
         created_at: result.get("created_at"),
     })
+}
+
+#[tauri::command]
+pub async fn update_author(state: State<'_, AppState>, id: i64, dto: UpdateAuthorDto) -> Result<AuthorRow, String> {
+    let pool = get_db(&state).await?;
+    
+    sqlx::query("UPDATE authors SET name = ?, bio = ? WHERE id = ?")
+        .bind(&dto.name).bind(&dto.bio).bind(id).execute(&pool).await.map_err(|e| e.to_string())?;
+    
+    let result = sqlx::query("SELECT id, name, bio, created_at FROM authors WHERE id = ?")
+        .bind(id).fetch_one(&pool).await.map_err(|e| e.to_string())?;
+    
+    Ok(AuthorRow {
+        id: result.get("id"),
+        name: result.get("name"),
+        bio: result.get("bio"),
+        created_at: result.get("created_at"),
+    })
+}
+
+#[tauri::command]
+pub async fn delete_author(state: State<'_, AppState>, id: i64) -> Result<(), String> {
+    let pool = get_db(&state).await?;
+    
+    sqlx::query("DELETE FROM authors WHERE id = ?").bind(id).execute(&pool).await.map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -220,6 +277,33 @@ pub async fn create_publisher(state: State<'_, AppState>, dto: CreatePublisherDt
         website: result.get("website"),
         created_at: result.get("created_at"),
     })
+}
+
+#[tauri::command]
+pub async fn update_publisher(state: State<'_, AppState>, id: i64, dto: UpdatePublisherDto) -> Result<PublisherRow, String> {
+    let pool = get_db(&state).await?;
+    
+    sqlx::query("UPDATE publishers SET name = ?, country = ?, website = ? WHERE id = ?")
+        .bind(&dto.name).bind(&dto.country).bind(&dto.website).bind(id).execute(&pool).await.map_err(|e| e.to_string())?;
+    
+    let result = sqlx::query("SELECT id, name, country, website, created_at FROM publishers WHERE id = ?")
+        .bind(id).fetch_one(&pool).await.map_err(|e| e.to_string())?;
+    
+    Ok(PublisherRow {
+        id: result.get("id"),
+        name: result.get("name"),
+        country: result.get("country"),
+        website: result.get("website"),
+        created_at: result.get("created_at"),
+    })
+}
+
+#[tauri::command]
+pub async fn delete_publisher(state: State<'_, AppState>, id: i64) -> Result<(), String> {
+    let pool = get_db(&state).await?;
+    
+    sqlx::query("DELETE FROM publishers WHERE id = ?").bind(id).execute(&pool).await.map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -308,6 +392,24 @@ pub async fn update_game(state: State<'_, AppState>, id: i64, dto: CreateGameDto
         "UPDATE games SET title = ?, original_title = ?, description = ?, year_published = ?, min_players = ?, max_players = ?, min_age = ?, play_time_min = ?, play_time_max = ?, difficulty = ?, status = ?, updated_at = datetime('now') WHERE id = ?"
     ).bind(&dto.title).bind(&dto.original_title).bind(&dto.description).bind(&dto.year_published).bind(&dto.min_players).bind(&dto.max_players).bind(&dto.min_age).bind(&dto.play_time_min).bind(&dto.play_time_max).bind(&dto.difficulty).bind(&dto.status).bind(id).execute(&pool).await.map_err(|e| e.to_string())?;
     
+    sqlx::query("DELETE FROM game_genres WHERE game_id = ?").bind(id).execute(&pool).await.map_err(|e| e.to_string())?;
+    for genre_id in &dto.genre_ids {
+        sqlx::query("INSERT INTO game_genres (game_id, genre_id) VALUES (?, ?)")
+            .bind(id).bind(genre_id).execute(&pool).await.map_err(|e| e.to_string())?;
+    }
+    
+    sqlx::query("DELETE FROM game_authors WHERE game_id = ?").bind(id).execute(&pool).await.map_err(|e| e.to_string())?;
+    for author_id in &dto.author_ids {
+        sqlx::query("INSERT INTO game_authors (game_id, author_id, role) VALUES (?, ?, 'designer')")
+            .bind(id).bind(author_id).execute(&pool).await.map_err(|e| e.to_string())?;
+    }
+    
+    sqlx::query("DELETE FROM game_publishers WHERE game_id = ?").bind(id).execute(&pool).await.map_err(|e| e.to_string())?;
+    for publisher_id in &dto.publisher_ids {
+        sqlx::query("INSERT INTO game_publishers (game_id, publisher_id, is_primary) VALUES (?, ?, 1)")
+            .bind(id).bind(publisher_id).execute(&pool).await.map_err(|e| e.to_string())?;
+    }
+    
     let result = sqlx::query("SELECT * FROM games WHERE id = ?").bind(id).fetch_one(&pool).await.map_err(|e| e.to_string())?;
     Ok(GameRow::from_row(&result))
 }
@@ -341,6 +443,32 @@ pub async fn search_games(state: State<'_, AppState>, query: String, limit: i64)
     ).bind(&pattern).bind(&pattern).bind(limit).fetch_all(&pool).await.map_err(|e| e.to_string())?;
     
     Ok(rows.iter().map(|r| GameRow::from_row(r)).collect())
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GameDetails {
+    pub genre_ids: Vec<i64>,
+    pub author_ids: Vec<i64>,
+    pub publisher_ids: Vec<i64>,
+}
+
+#[tauri::command]
+pub async fn get_game_details(state: State<'_, AppState>, id: i64) -> Result<GameDetails, String> {
+    let pool = get_db(&state).await?;
+    
+    let genre_rows = sqlx::query("SELECT genre_id FROM game_genres WHERE game_id = ?")
+        .bind(id).fetch_all(&pool).await.map_err(|e| e.to_string())?;
+    let genre_ids: Vec<i64> = genre_rows.iter().map(|r| r.get("genre_id")).collect();
+    
+    let author_rows = sqlx::query("SELECT author_id FROM game_authors WHERE game_id = ?")
+        .bind(id).fetch_all(&pool).await.map_err(|e| e.to_string())?;
+    let author_ids: Vec<i64> = author_rows.iter().map(|r| r.get("author_id")).collect();
+    
+    let publisher_rows = sqlx::query("SELECT publisher_id FROM game_publishers WHERE game_id = ?")
+        .bind(id).fetch_all(&pool).await.map_err(|e| e.to_string())?;
+    let publisher_ids: Vec<i64> = publisher_rows.iter().map(|r| r.get("publisher_id")).collect();
+    
+    Ok(GameDetails { genre_ids, author_ids, publisher_ids })
 }
 
 #[tauri::command]

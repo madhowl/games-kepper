@@ -67,13 +67,31 @@ pub struct CreateGenreDto {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateGenreDto {
+    pub name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CreateAuthorDto {
     pub name: String,
     pub bio: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateAuthorDto {
+    pub name: String,
+    pub bio: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CreatePublisherDto {
+    pub name: String,
+    pub country: Option<String>,
+    pub website: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdatePublisherDto {
     pub name: String,
     pub country: Option<String>,
     pub website: Option<String>,

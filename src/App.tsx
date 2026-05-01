@@ -1,11 +1,15 @@
-import { createSignal, onMount, Show } from 'solid-js';
+import { createSignal, onMount, Show, For } from 'solid-js';
+import { Router, Route, A } from '@solidjs/router';
 import { invoke } from '@tauri-apps/api/core';
 
 import { Input } from './components/ui/input';
 import { Button } from './components/ui/button';
+import { Select } from './components/ui/select';
 import { GameTree, SearchResults, type GameNode } from './components/games/GameTree';
 import { GameCard } from './components/games/GameCard';
 import { GameForm, type CreateGameDto } from './components/games/GameForm';
+import Settings from './pages/Settings';
+import EditGame from './pages/EditGame';
 
 const [gamesTree, setGamesTree] = createSignal<GameNode[]>([]);
 const [selectedGame, setSelectedGame] = createSignal<GameNode | null>(null);
@@ -13,14 +17,31 @@ const [expandedNodes, setExpandedNodes] = createSignal<Set<number>>(new Set());
 const [searchQuery, setSearchQuery] = createSignal('');
 const [searchResults, setSearchResults] = createSignal<GameNode[]>([]);
 const [showAddModal, setShowAddModal] = createSignal(false);
+const [genres, setGenres] = createSignal<{ id: number; name: string }[]>([]);
+const [selectedGenreId, setSelectedGenreId] = createSignal<number | null>(null);
 
 async function loadData() {
   try {
-    const tree = await invoke<GameNode[]>('get_games_tree');
+    const tree = await invoke<GameNode[]>('get_games_tree', { genreId: selectedGenreId() });
     setGamesTree(tree);
   } catch (e) {
     console.error('Failed to load data:', e);
   }
+}
+
+async function loadGenres() {
+  try {
+    const loadedGenres = await invoke<{ id: number; name: string }[]>('get_genres');
+    setGenres(loadedGenres);
+  } catch (e) {
+    console.error('Failed to load genres:', e);
+  }
+}
+
+function handleGenreFilter(e: Event) {
+  const value = (e.target as HTMLSelectElement).value;
+  setSelectedGenreId(value ? parseInt(value) : null);
+  loadData();
 }
 
 async function handleCreateGame(dto: CreateGameDto) {
@@ -71,9 +92,10 @@ function toggleNode(id: number) {
 
 onMount(() => {
   loadData();
+  loadGenres();
 });
 
-export default function App() {
+function Home() {
   return (
     <div class="flex h-screen w-screen bg-background text-foreground">
       {/* Sidebar */}
@@ -92,9 +114,27 @@ export default function App() {
               🔍
             </Button>
           </div>
-          <Button class="w-full" onClick={() => setShowAddModal(true)}>
-            + Добавить игру
-          </Button>
+          <div class="flex gap-2">
+            <Button class="flex-1" onClick={() => setShowAddModal(true)}>
+              + Добавить игру
+            </Button>
+            <A href="/settings">
+              <Button variant="secondary">⚙️</Button>
+            </A>
+          </div>
+          
+          <Show when={genres().length > 0}>
+            <div class="mt-3">
+              <Select
+                value={selectedGenreId()?.toString() || ''}
+                onChange={handleGenreFilter}
+                options={[
+                  { value: '', label: 'Все жанры' },
+                  ...genres().map(g => ({ value: g.id.toString(), label: g.name }))
+                ]}
+              />
+            </div>
+          </Show>
         </div>
         
         {/* Game Tree */}
@@ -160,5 +200,16 @@ export default function App() {
         onSubmit={handleCreateGame}
       />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Router>
+      <Route path="/" component={Home} />
+      <Route path="/settings" component={Settings} />
+      <Route path="/game/new" component={EditGame} />
+      <Route path="/game/:id/edit" component={EditGame} />
+    </Router>
   );
 }
