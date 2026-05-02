@@ -6,6 +6,7 @@ import { Input } from '../components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogContent } from '../components/ui/dialog';
 import { Select } from '../components/ui/select';
+import { CardConstructor } from '../components/editor/CardConstructor';
 import type { ComponentType, GameComponent, CreateGameComponentDto, BASE_TYPE_LABELS, BASE_TYPE_ICONS } from '../types/components';
 
 export default function EditComponents() {
@@ -19,6 +20,7 @@ export default function EditComponents() {
   const [showAddModal, setShowAddModal] = createSignal(false);
   const [showEditModal, setShowEditModal] = createSignal(false);
   const [editingComponent, setEditingComponent] = createSignal<GameComponent | null>(null);
+  const [showConstructor, setShowConstructor] = createSignal(false);
 
   // Form state
   const [formName, setFormName] = createSignal('');
@@ -150,6 +152,7 @@ export default function EditComponents() {
             class="w-48"
           />
           <Button onClick={openAddModal}>+ Добавить компонент</Button>
+          <Button variant="outline" onClick={() => setShowConstructor(true)}>🎨 Конструктор</Button>
         </div>
 
         <Show when={filteredComponents().length === 0}>
@@ -278,6 +281,11 @@ export default function EditComponents() {
           <Button onClick={handleEdit} disabled={!formName()}>Сохранить</Button>
         </DialogFooter>
       </Dialog>
+
+      <CardConstructor
+        open={showConstructor()}
+        onOpenChange={setShowConstructor}
+      />
     </div>
   );
 }
