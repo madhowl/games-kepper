@@ -6,6 +6,8 @@ use crate::models::dto::*;
 use crate::AppState;
 use sqlx::Row;
 
+pub mod components;
+
 async fn get_db(state: &State<'_, AppState>) -> Result<SqlitePool, String> {
     let db_lock = state.db.lock().await;
     db_lock.clone().ok_or_else(|| "Database not initialized".to_string())

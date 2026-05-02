@@ -102,3 +102,41 @@ pub struct CreateSeriesDto {
     pub name: String,
     pub description: Option<String>,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CreateComponentTypeDto {
+    pub name: String,
+    pub base_type: String,
+    pub field_schema: Option<String>,
+    pub icon: Option<String>,
+    pub color: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateComponentTypeDto {
+    pub name: Option<String>,
+    pub field_schema: Option<String>,
+    pub icon: Option<String>,
+    pub color: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CreateGameComponentDto {
+    pub game_id: i64,
+    pub component_type_id: i64,
+    pub name: String,
+    pub quantity: Option<i32>,
+    pub data: Option<String>,
+    pub images: Option<String>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateGameComponentDto {
+    pub name: Option<String>,
+    pub quantity: Option<i32>,
+    pub data: Option<String>,
+    pub images: Option<String>,
+    pub notes: Option<String>,
+    pub sort_order: Option<i32>,
+}
