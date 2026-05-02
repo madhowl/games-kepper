@@ -10,6 +10,7 @@ import { GameCard } from './components/games/GameCard';
 import { GameForm, type CreateGameDto } from './components/games/GameForm';
 import Settings from './pages/Settings';
 import EditGame from './pages/EditGame';
+import EditComponents from './pages/EditComponents';
 
 const [gamesTree, setGamesTree] = createSignal<GameNode[]>([]);
 const [selectedGame, setSelectedGame] = createSignal<GameNode | null>(null);
@@ -210,6 +211,7 @@ export default function App() {
       <Route path="/settings" component={Settings} />
       <Route path="/game/new" component={EditGame} />
       <Route path="/game/:id/edit" component={EditGame} />
+      <Route path="/game/:id/components" component={EditComponents} />
     </Router>
   );
 }

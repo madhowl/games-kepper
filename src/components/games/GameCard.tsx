@@ -56,6 +56,11 @@ export function GameCard(props: GameCardProps) {
       
       <CardFooter>
         <div class="flex justify-end w-full gap-2">
+          <A href={`/game/${props.game.id}/components`}>
+            <Button variant="outline" size="sm">
+              📦 Компоненты
+            </Button>
+          </A>
           <A href={`/game/${props.game.id}/edit`}>
             <Button variant="secondary" size="sm">
               ✏️ Редактировать
