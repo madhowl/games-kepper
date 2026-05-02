@@ -96,11 +96,56 @@ CREATE TABLE IF NOT EXISTS game_publishers (
     is_primary  INTEGER DEFAULT 1,
     PRIMARY KEY (game_id, publisher_id)
 );
+
+-- Component types (конструктор форм)
+CREATE TABLE IF NOT EXISTS component_types (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    name           TEXT NOT NULL,
+    base_type      TEXT NOT NULL CHECK(base_type IN ('card', 'token', 'board', 'dice', 'rulebook', 'tile', 'miniature', 'marker', 'custom')),
+    parent_type_id INTEGER REFERENCES component_types(id),
+    field_schema   TEXT NOT NULL DEFAULT '{}',
+    icon           TEXT,
+    color          TEXT DEFAULT '#6366f1',
+    is_system      INTEGER DEFAULT 0,
+    created_at     TEXT DEFAULT (datetime('now'))
+);
+
+-- Game components (экземпляры)
+CREATE TABLE IF NOT EXISTS game_components (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_id           INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+    component_type_id INTEGER NOT NULL REFERENCES component_types(id),
+    name              TEXT NOT NULL,
+    quantity          INTEGER DEFAULT 1,
+    data              TEXT NOT NULL DEFAULT '{}',
+    images            TEXT DEFAULT '[]',
+    notes             TEXT,
+    sort_order        INTEGER DEFAULT 0,
+    created_at        TEXT DEFAULT (datetime('now')),
+    updated_at        TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_game_components_game ON game_components(game_id);
+CREATE INDEX IF NOT EXISTS idx_game_components_type ON game_components(component_type_id);
     "#;
     
     let mut conn = pool.acquire().await?;
     conn.execute(sql).await?;
-    info!("[DB] Migrations run");
+    
+    let seed_sql = r#"
+    INSERT OR IGNORE INTO component_types (name, base_type, field_schema, icon, color, is_system) VALUES 
+    ('Стандартная карта', 'card', '{"width": 63, "height": 88, "fields": [{"name": "cost", "type": "integer", "default": 0}, {"name": "type", "type": "string", "default": ""}]}', '🃏', '#3b82f6', 1),
+    ('Фишка', 'token', '{"width": 20, "height": 20, "fields": [{"name": "value", "type": "integer", "default": 1}]}', '🪙', '#f59e0b', 1),
+    ('Игровое поле', 'board', '{"width": 297, "height": 420, "fields": [{"name": "grid", "type": "string", "default": "none"}]}', '🗺️', '#10b981', 1),
+    ('Кубик d6', 'dice', '{"width": 15, "height": 15, "fields": []}', '🎲', '#ef4444', 1),
+    ('Правила', 'rulebook', '{"width": 148, "height": 210, "fields": []}', '📖', '#8b5cf6', 1),
+    ('Плитка', 'tile', '{"width": 40, "height": 40, "fields": [{"name": "terrain", "type": "string", "default": ""}]}', '⬜', '#6b7280', 1),
+    ('Миниатюра', 'miniature', '{"width": 25, "height": 25, "fields": []}', '♟️', '#ec4899', 1),
+    ('Маркер', 'marker', '{"width": 10, "height": 10, "fields": [{"name": "color", "type": "string", "default": "red"}]}', '🏷️', '#14b8a6', 1);
+    "#;
+    conn.execute(seed_sql).await?;
+    
+    info!("[DB] Migrations run with seed");
     Ok(())
 }
 
@@ -201,6 +246,14 @@ pub fn run() {
             commands::create_series,
             commands::export_database,
             commands::import_database,
+            commands::components::get_component_types,
+            commands::components::create_component_type,
+            commands::components::update_component_type,
+            commands::components::delete_component_type,
+            commands::components::get_game_components,
+            commands::components::create_game_component,
+            commands::components::update_game_component,
+            commands::components::delete_game_component,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
